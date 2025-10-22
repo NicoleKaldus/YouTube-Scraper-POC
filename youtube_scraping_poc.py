@@ -19,7 +19,21 @@ def search_videos_by_keywords(api_key, query, max_results=50):
         type='video'
     )
     response = request.execute()
-    return process_video_response(response)
+    # Get video IDs from search results
+    video_ids = []
+    for item in response['items']:
+        video_ids.append(item['id']['videoId'])
+    
+    # Get detailed video info including statistics
+    if video_ids:
+        videos_request = youtube.videos().list(
+            part='snippet,statistics',
+            id=','.join(video_ids)
+        )
+        videos_response = videos_request.execute()
+        return process_video_response(videos_response)
+    
+    return pd.DataFrame()
 
 def get_trending_videos(api_key, region_code='US', max_results=50):
     """Get trending videos"""
@@ -73,6 +87,8 @@ def process_video_response(response):
             'title': item['snippet']['title'],
             'channelTitle': item['snippet']['channelTitle'],
             'publishedAt': item['snippet']['publishedAt'],
+            'viewCount': item.get('statistics', {}).get('viewCount', 0),
+            'likeCount': item.get('statistics', {}).get('likeCount', 0),
             'description': item['snippet']['description'][:200] + '...'
         }
         videos.append(video_data)
